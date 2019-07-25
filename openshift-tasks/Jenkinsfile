@@ -103,7 +103,7 @@ podTemplate(
         openshift.withCluster() {
           openshift.withProject(devProject) {
             openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${devTag}")
-            openshift.set("VERSION", "dc/tasks", "${devTag} (tasks-dev)")
+            //openshift.set("VERSION", "dc/tasks", "${devTag} (tasks-dev)")
 
             // Recreate config maps with settings in scm
             openshift.selector('configmap', 'tasks-config').delete()
