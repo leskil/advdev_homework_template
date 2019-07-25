@@ -86,7 +86,7 @@ podTemplate(
 
         // TBD: Build Image, tag Image
         openshift.withCluster() {
-          openshift.withProject(${devProject}) {
+          openshift.withProject(devProject) {
             openshift.selector("bc", "tasks").startBuild("--from-file=\"${nexusUrl}/org/jboss/quickstarts/eap/tasks/${prodTag}/tasks-${prodTag}.war\"", "--wait=true")
             openshift.tag("tasks:latest", "tasks:${devTag}")
           }
@@ -101,7 +101,7 @@ podTemplate(
         //      Set Image, Set VERSION
         //      Make sure the application is running and ready before proceeding
         openshift.withCluster() {
-          openshift.withProject(${devProject}) {
+          openshift.withProject(devProject) {
             openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${devTag}")
             openshift.set("VERSION", "dc/tasks", "${devTag} (tasks-dev)")
 
@@ -136,7 +136,7 @@ podTemplate(
 
         // TBD: Tag the built image with the production tag.
         openshift.withCluster() {
-          openshift.withProject(${prdProject}) {
+          openshift.withProject(prdProject) {
             openshift.tag("${devProject}/tasks:${devTag}", "${devProject}/tasks:${prodTag}")
           }
         }
