@@ -19,6 +19,10 @@ podTemplate(
     // settings for our Nexus installation
     def mvnCmd = "mvn -s ../nexus_settings.xml"
 
+    def sonarqubeUrl = "http://sonarqube.gpte-hw-cicd.svc.cluster.local:9000"
+    def nexusUrl = "http://nexus3.gpte-hw-cicd.svc.cluster.local:8081/repository/releases"
+    def nexusRegistryUrl = "docker://nexus-registry.gpte-hw-cicd.svc.cluster.local:5000"
+
     // Checkout Source Code.
     stage('Checkout Source') {
       checkout scm
@@ -29,13 +33,17 @@ podTemplate(
       // The following variables need to be defined at the top level
       // and not inside the scope of a stage - otherwise they would not
       // be accessible from other stages.
+
+      def devProject = "${GUID}-tasks-dev"
+      def prdProject = "${GUID}-tasks-prod"
+
       // Extract version from the pom.xml
       def version = getVersionFromPom("pom.xml")
 
       // TBD Set the tag for the development image: version + build number
-      def devTag  = ""
+      def devTag  = "${version}-${currentBuild.number}"
       // Set the tag for the production image: version
-      def prodTag = ""
+      def prodTag = "${version}"
 
       // Using Maven build the war file
       // Do not run tests in this step
@@ -43,6 +51,7 @@ podTemplate(
         echo "Building version ${devTag}"
 
         // TBD: Execute Maven Build
+        sh "${mvnCmd} clean install -DskipTests"
       }
 
       // TBD: The next two stages should run in parallel
@@ -52,6 +61,7 @@ podTemplate(
         echo "Running Unit Tests"
 
         // TBD: Execute Unit Tests
+        sh "${mvnCmd} test"
       }
 
       // Using Maven to call SonarQube for Code Analysis
@@ -59,6 +69,7 @@ podTemplate(
         echo "Running Code Analysis"
 
         // TBD: Execute Sonarqube Tests
+        sh "${mvnCmd} sonar:sonar -Dsonar.host.url=${sonarqubeUrl} -Dsonar.projectVersion=${devTag} -Dsonar.projectName=\"${GUID} OpenShift Tasks\""
       }
 
       // Publish the built war file to Nexus
@@ -66,6 +77,7 @@ podTemplate(
         echo "Publish to Nexus"
 
         // TBD: Publish to Nexus
+        sh "${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::${nexusUrl}"
       }
 
       // Build the OpenShift Image in OpenShift and tag it.
@@ -73,6 +85,12 @@ podTemplate(
         echo "Building OpenShift container image tasks:${devTag}"
 
         // TBD: Build Image, tag Image
+        openshift.withCluster() {
+          openshift.withProject(${devProject}) {
+            openshift.selector("bc", "tasks").startBuild("--from-file=\"${nexusUrl}/org/jboss/quickstarts/eap/tasks/${prodTag}/tasks-${prodTag}.war\"", "--wait=true")
+            openshift.tag("tasks:latest", "tasks:${devTag}")
+          }
+        }
       }
 
       // Deploy the built image to the Development Environment.
@@ -82,6 +100,31 @@ podTemplate(
         // TBD: Deploy to development Project
         //      Set Image, Set VERSION
         //      Make sure the application is running and ready before proceeding
+        openshift.withCluster() {
+          openshift.withProject(${devProject}) {
+            openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${devTag}")
+            openshift.set("VERSION", "dc/tasks", "${devTag} (tasks-dev)")
+
+            // Recreate config maps with settings in scm
+            openshift.selector('configmap', 'tasks-config').delete()
+            def configmap = openshift.create('configmap', 'tasks-config', '--from-file=./configuration/application-users.properties', '--from-file=./configuration/application-roles.properties' )
+
+            openshift.selector("dc", "tasks").rollout().latest()
+
+            // Wait for application to be deployed
+            def dc = openshift.selector("dc", "tasks").object()
+            def dc_version = dc.status.latestVersion
+            def rc = openshift.selector("rc", "tasks-${dc_version}").object()
+
+            echo "Waiting for ReplicationController tasks-${dc_version} to be ready"
+            while (rc.spec.replicas != rc.status.readyReplicas) {
+              sleep 5
+              rc = openshift.selector("rc", "tasks-${dc_version}").object()
+            }
+          }
+        }
+
+        echo "Done deploying to dev"
       }
 
       // Copy Image to Nexus container registry
@@ -89,8 +132,14 @@ podTemplate(
         echo "Copy image to Nexus container registry"
 
         // TBD: Copy image to Nexus container registry
+        sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds openshift:\$(oc whoami -t) --dest-creds admin:redhat docker://docker-registry.default.svc.cluster.local:5000/${devProject}/tasks:${devTag} ${nexusRegistryUrl}/tasks:${devTag}"
 
         // TBD: Tag the built image with the production tag.
+        openshift.withCluster() {
+          openshift.withProject(${prdProject}) {
+            openshift.tag("${devProject}/tasks:${devTag}", "${devProject}/tasks:${prodTag}")
+          }
+        }
       }
 
       // Blue/Green Deployment into Production
