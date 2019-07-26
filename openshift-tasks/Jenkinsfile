@@ -56,8 +56,8 @@ podTemplate(
 
       // TBD: The next two stages should run in parallel
       stage('Tests and code analysis') {
-        failFast false
-        parallel {
+        //failFast false
+        //parallel {
 
           // Using Maven run the unit tests
           stage('Unit Tests') {
@@ -74,7 +74,7 @@ podTemplate(
             // TBD: Execute Sonarqube Tests
             sh "${mvnCmd} sonar:sonar -Dsonar.host.url=${sonarqubeUrl} -Dsonar.projectVersion=${devTag} -Dsonar.projectName=\"${GUID} OpenShift Tasks\""
           }
-        }
+        //}
       }
       // Publish the built war file to Nexus
       stage('Publish to Nexus') {
