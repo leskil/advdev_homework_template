@@ -40,7 +40,7 @@ podTemplate(
       // Extract version from the pom.xml
       def version = getVersionFromPom("pom.xml")
 
-      // TBD Set the tag for the development image: version + build number
+      // Set the tag for the development image: version + build number
       def devTag  = "${version}-${currentBuild.number}"
       // Set the tag for the production image: version
       def prodTag = "${version}"
@@ -50,11 +50,10 @@ podTemplate(
       stage('Build war') {
         echo "Building version ${devTag}"
 
-        // TBD: Execute Maven Build
+        // Execute Maven Build (without tests)
         sh "${mvnCmd} clean install -DskipTests"
       }
 
-      // TBD: The next two stages should run in parallel
       stage('Tests and code analysis') {
         parallel(
                 'Unit Tests': {
@@ -71,7 +70,7 @@ podTemplate(
       stage('Publish to Nexus') {
         echo "Publish to Nexus"
 
-        // TBD: Publish to Nexus
+        // Publish to Nexus
         sh "${mvnCmd} deploy -DskipTests=true -DaltDeploymentRepository=nexus::default::${nexusUrl}"
       }
 
@@ -79,7 +78,7 @@ podTemplate(
       stage('Build and Tag OpenShift Image') {
         echo "Building OpenShift container image tasks:${devTag}"
 
-        // TBD: Build Image, tag Image
+        // Build Image, tag Image
         openshift.withCluster() {
           openshift.withProject(devProject) {
             openshift.selector("bc", "tasks").startBuild("--from-file=\"${nexusUrl}/org/jboss/quickstarts/eap/tasks/${prodTag}/tasks-${prodTag}.war\"", "--wait=true")
@@ -92,9 +91,9 @@ podTemplate(
       stage('Deploy to Dev') {
         echo "Deploying container image to Development Project"
 
-        // TBD: Deploy to development Project
-        //      Set Image, Set VERSION
-        //      Make sure the application is running and ready before proceeding
+        // Deploy to development Project
+        // Set Image, Set VERSION
+        // Make sure the application is running and ready before proceeding
         openshift.withCluster() {
           openshift.withProject(devProject) {
             openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${devTag}")
@@ -126,10 +125,10 @@ podTemplate(
       stage('Copy Image to Nexus container registry') {
         echo "Copy image to Nexus container registry"
 
-        // TBD: Copy image to Nexus container registry
+        // Copy image to Nexus container registry
         sh "skopeo copy --src-tls-verify=false --dest-tls-verify=false --src-creds openshift:\$(oc whoami -t) --dest-creds admin:redhat docker://docker-registry.default.svc.cluster.local:5000/${devProject}/tasks:${devTag} ${nexusRegistryUrl}/tasks:${devTag}"
 
-        // TBD: Tag the built image with the production tag.
+        // Tag the built image with the production tag.
         openshift.withCluster() {
           openshift.withProject(prdProject) {
             openshift.tag("${devProject}/tasks:${devTag}", "${devProject}/tasks:${prodTag}")
@@ -143,10 +142,10 @@ podTemplate(
       def activeApp = ""
 
       stage('Blue/Green Production Deployment') {
-        // TBD: Determine which application is active
-        //      Set Image, Set VERSION
-        //      Deploy into the other application
-        //      Make sure the application is running and ready before proceeding
+        // Determine which application is active
+        // Set Image, Set VERSION
+        // Deploy into the other application
+        // Make sure the application is running and ready before proceeding
 
         openshift.withCluster() {
           openshift.withProject(prdProject) {
@@ -157,6 +156,8 @@ podTemplate(
 
             echo "Active Application:      " + activeApp
             echo "Destination Application: " + destApp
+
+            openshift.set("env", "dc/${destApp}", "VERSION=\"${prodTag} (${destApp})\"") 
 
             // Update the Image on the Production Deployment Config
             def dc = openshift.selector("dc/${destApp}").object()
@@ -169,7 +170,7 @@ podTemplate(
             def configmap = openshift.create("configmap", "${destApp}-config", "--from-file=./configuration/application-users.properties", "--from-file=./configuration/application-roles.properties")
 
             // Deploy the inactive application.
-            openshift.set("env", "dc/${destApp}", "VERSION=\"${prodTag} (${destApp})\"")
+
             openshift.selector("dc", "${destApp}").rollout().latest()
 
             // Wait for application to be deployed
@@ -187,7 +188,7 @@ podTemplate(
 
       stage('Switch over to new Version') {
         echo "Switching Production application to ${destApp}."
-        // TBD: Execute switch
+        // Execute switch
         openshift.withCluster() {
           openshift.withProject("${prdProject}") {
             def route = openshift.selector("route/tasks").object()
