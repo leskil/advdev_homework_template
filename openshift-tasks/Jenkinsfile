@@ -56,8 +56,8 @@ podTemplate(
 
       // TBD: The next two stages should run in parallel
       stage('Tests and code analysis') {
-        //failFast false
-        //parallel {
+        failFast true
+        parallel {
 
           // Using Maven run the unit tests
           stage('Unit Tests') {
@@ -74,7 +74,7 @@ podTemplate(
             // TBD: Execute Sonarqube Tests
             sh "${mvnCmd} sonar:sonar -Dsonar.host.url=${sonarqubeUrl} -Dsonar.projectVersion=${devTag} -Dsonar.projectName=\"${GUID} OpenShift Tasks\""
           }
-        //}
+        }
       }
       // Publish the built war file to Nexus
       stage('Publish to Nexus') {
@@ -179,7 +179,7 @@ podTemplate(
 
             // Deploy the inactive application.
             openshift.selector("dc", "${destApp}").rollout().latest()
-            openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${prdProject}/tasks:${prodTag}")
+            openshift.set("image", "dc/${destApp}", "tasks=docker-registry.default.svc:5000/${prdProject}/tasks:${prodTag}")
 
             // Wait for application to be deployed
             def dc_prod = openshift.selector("dc", "${destApp}").object()
