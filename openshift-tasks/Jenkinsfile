@@ -170,7 +170,7 @@ podTemplate(
 
             // Deploy the inactive application.
             openshift.selector("dc", "${destApp}").rollout().latest()
-            openshift.set("image", "dc/${destApp}", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${prodTag}")
+            //openshift.set("image", "dc/${destApp}", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${prodTag}")
 
             // Wait for application to be deployed
             def dc_prod = openshift.selector("dc", "${destApp}").object()
