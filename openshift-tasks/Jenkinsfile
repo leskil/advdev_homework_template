@@ -81,7 +81,7 @@ podTemplate(
         // Build Image, tag Image
         openshift.withCluster() {
           openshift.withProject(devProject) {
-            openshift.selector("bc", "tasks").startBuild("--from-file=\"${nexusUrl}/org/jboss/quickstarts/eap/tasks/${prodTag}/tasks-${prodTag}.war\"", "--wait=true")
+            openshift.selector("bc", "tasks-pipeline").startBuild("--from-file=\"${nexusUrl}/org/jboss/quickstarts/eap/tasks/${prodTag}/tasks-${prodTag}.war\"", "--wait=true")
             openshift.tag("tasks:latest", "tasks:${devTag}")
           }
         }
