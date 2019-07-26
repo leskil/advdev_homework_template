@@ -61,18 +61,22 @@ podTemplate(
 
           // Using Maven run the unit tests
           stage('Unit Tests') {
-            echo "Running Unit Tests"
+            steps {
+              echo "Running Unit Tests"
 
-            // TBD: Execute Unit Tests
-            sh "${mvnCmd} test"
+              // TBD: Execute Unit Tests
+              sh "${mvnCmd} test"
+            }
           }
 
           // Using Maven to call SonarQube for Code Analysis
           stage('Code Analysis') {
-            echo "Running Code Analysis"
+            steps {
+              echo "Running Code Analysis"
 
-            // TBD: Execute Sonarqube Tests
-            sh "${mvnCmd} sonar:sonar -Dsonar.host.url=${sonarqubeUrl} -Dsonar.projectVersion=${devTag} -Dsonar.projectName=\"${GUID} OpenShift Tasks\""
+              // TBD: Execute Sonarqube Tests
+              sh "${mvnCmd} sonar:sonar -Dsonar.host.url=${sonarqubeUrl} -Dsonar.projectVersion=${devTag} -Dsonar.projectName=\"${GUID} OpenShift Tasks\""
+            }
           }
         }
       }
