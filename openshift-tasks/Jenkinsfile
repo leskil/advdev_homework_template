@@ -98,7 +98,7 @@ podTemplate(
         openshift.withCluster() {
           openshift.withProject(devProject) {
             openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${devTag}")
-            openshift.set("env", "dc/tasks", "VERSION=${devTag} (tasks-dev)")
+            openshift.set("env", "dc/tasks", "VERSION=\"${devTag} (tasks-dev)\"")
             //def dc1 = openshift.selector("dc/tasks").object()
             //dc1.spec.template.spec.containers[0].image = "docker-registry.default.svc:5000/${devProject}/tasks:${devTag}"
             //dc1.spec.template.spec.env['VERSION'] = "${devTag} (tasks-dev)"
