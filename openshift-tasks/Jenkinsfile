@@ -192,7 +192,7 @@ podTemplate(
         echo "Switching Production application to ${destApp}."
         // TBD: Execute switch
         openshift.withCluster() {
-          openshift.withProject("${prodProject}") {
+          openshift.withProject("${prdProject}") {
             def route = openshift.selector("route/tasks").object()
             route.spec.to.name="${destApp}"
             openshift.apply(route)
