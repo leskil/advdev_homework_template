@@ -97,8 +97,12 @@ podTemplate(
         //      Make sure the application is running and ready before proceeding
         openshift.withCluster() {
           openshift.withProject(devProject) {
-            openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${devTag}")
+            //openshift.set("image", "dc/tasks", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${devTag}")
             //openshift.set("VERSION", "dc/tasks", "${devTag} (tasks-dev)")
+            def dc1 = openshift.selector("dc/tasks").object()
+            dc1.spec.template.spec.containers[0].image = "docker-registry.default.svc:5000/${devProject}/tasks:${devTag}"
+            dc1.spec.template.spec.env['VERSION'] = "${devTag} (tasks-dev)"
+            openshift.apply(dc1)
 
             // Recreate config maps with settings in scm
             openshift.selector('configmap', 'tasks-config').delete()
@@ -170,7 +174,6 @@ podTemplate(
 
             // Deploy the inactive application.
             openshift.selector("dc", "${destApp}").rollout().latest()
-            //openshift.set("image", "dc/${destApp}", "tasks=docker-registry.default.svc:5000/${devProject}/tasks:${prodTag}")
 
             // Wait for application to be deployed
             def dc_prod = openshift.selector("dc", "${destApp}").object()
